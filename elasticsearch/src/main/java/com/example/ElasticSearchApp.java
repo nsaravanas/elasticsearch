@@ -13,7 +13,7 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 
 public class ElasticSearchApp {
 
-	public static void main(String[] args) throws IOException {
+	public static void run(String[] args) throws IOException {
 
 		Settings settings = Settings.settingsBuilder().build();
 		TransportClient client = TransportClient.builder().settings(settings).build()
