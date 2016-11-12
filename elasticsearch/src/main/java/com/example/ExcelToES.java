@@ -1,6 +1,8 @@
 package com.example;
 
 import java.io.FileInputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -8,14 +10,16 @@ import java.util.List;
 
 import javax.annotation.PreDestroy;
 
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -23,10 +27,20 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class ExcelToES implements CommandLineRunner {
 
-	@Autowired
-	private TransportClient client;
+	private Client client;
 
-	public void main(String... args) throws Exception {
+	public void init() {
+		Settings settings = Settings.settingsBuilder().build();
+		try {
+			this.client = TransportClient.builder().settings(settings).build()
+					.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("localhost"), 9300));
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	public static void main(String[] args) {
 		SpringApplication.run(ExcelToES.class, args);
 	}
 
@@ -58,7 +72,11 @@ public class ExcelToES implements CommandLineRunner {
 			source2 = args[4];
 		}
 		ExcelToES ejson = new ExcelToES();
+		ejson.init();
 		boolean success1 = ejson.processExcel(index, source1, file1);
+		if (success1) {
+
+		}
 		boolean success2 = ejson.processExcel(index, source2, file2);
 		if (!success1 || !success2) {
 			System.err.println("some error occurred");
@@ -70,7 +88,7 @@ public class ExcelToES implements CommandLineRunner {
 		int counter = 0;
 		try {
 			FileInputStream fis = new FileInputStream(filePath);
-			Workbook workbook = new HSSFWorkbook(fis);
+			Workbook workbook = WorkbookFactory.create(fis);
 			Sheet sheet = workbook.getSheetAt(0);
 			List<String> header = new ArrayList<String>();
 			Row headerRow = sheet.getRow(0);
