@@ -88,6 +88,7 @@ public class IndexDocument implements CommandLineRunner {
 
 		IndexDocument ejson = new IndexDocument();
 		ejson.init();
+
 		boolean success = ejson.processFile(index, type1, file1);
 		if (!success) {
 			System.err.println("Something went wrong while processing " + file1 + " , Check log for error.");
@@ -145,6 +146,7 @@ public class IndexDocument implements CommandLineRunner {
 				for (int i = 0; i < header.size(); i++) {
 					jsonMap.put(header.get(i), record.get(i));
 				}
+				jsonMap.put("source", type);
 				jsonMap.put("id", (++counter) + "");
 				this.indexDocument(index, type, jsonMap);
 			}
@@ -199,8 +201,8 @@ public class IndexDocument implements CommandLineRunner {
 			System.err.println("Error while converting to JSON " + jsonMap);
 		}
 		try {
-			String in = this.indexDocument(index, type, jsonMap.get("id") + "", json);
-			System.out.println("Indexed document => " + index + "::" + type + "::" + in);
+			String inver = this.indexDocument(index, type, jsonMap.get("id") + "", json);
+			System.out.println("Indexed document => " + index + "::" + type + "::" + inver);
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.err.println("Error while indexing json document " + jsonMap);
