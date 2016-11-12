@@ -1,6 +1,7 @@
 package com.example;
 
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
@@ -8,14 +9,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import javax.annotation.PreDestroy;
-
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.ss.util.NumberToTextConverter;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
@@ -25,7 +25,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ExcelToES implements CommandLineRunner {
+public class IndexDocument implements CommandLineRunner {
 
 	private Client client;
 
@@ -37,11 +37,10 @@ public class ExcelToES implements CommandLineRunner {
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}
-
 	}
 
 	public static void main(String[] args) {
-		SpringApplication.run(ExcelToES.class, args);
+		SpringApplication.run(IndexDocument.class, args);
 	}
 
 	@Override
@@ -71,24 +70,28 @@ public class ExcelToES implements CommandLineRunner {
 			file2 = args[3];
 			source2 = args[4];
 		}
-		ExcelToES ejson = new ExcelToES();
+		IndexDocument ejson = new IndexDocument();
 		ejson.init();
-		boolean success1 = ejson.processExcel(index, source1, file1);
-		if (success1) {
-
+		boolean success = ejson.processExcel(index, source1, file1);
+		if (!success) {
+			System.err.println("Something went wrong while processing " + file1 + " , Check log for error.");
 		}
-		boolean success2 = ejson.processExcel(index, source2, file2);
-		if (!success1 || !success2) {
-			System.err.println("some error occurred");
+		success = ejson.processExcel(index, source2, file2);
+		if (!success) {
+			System.err.println("Something went wrong while processing " + file2 + " , Check log for error.");
 		}
 		ejson.close();
+	}
+
+	private boolean processCSV(String index, String source, String filePath) {
+		return false;
 	}
 
 	private boolean processExcel(String index, String source, String filePath) {
 		int counter = 0;
 		try {
-			FileInputStream fis = new FileInputStream(filePath);
-			Workbook workbook = WorkbookFactory.create(fis);
+			InputStream is = new FileInputStream(filePath);
+			Workbook workbook = WorkbookFactory.create(is);
 			Sheet sheet = workbook.getSheetAt(0);
 			List<String> header = new ArrayList<String>();
 			Row headerRow = sheet.getRow(0);
@@ -120,6 +123,9 @@ public class ExcelToES implements CommandLineRunner {
 	}
 
 	private static Object getValue(Cell cell) {
+		if (cell == null) {
+			return "";
+		}
 		Object value = null;
 		switch (cell.getCellType()) {
 		case Cell.CELL_TYPE_STRING:
@@ -130,7 +136,7 @@ public class ExcelToES implements CommandLineRunner {
 				Date date = cell.getDateCellValue();
 				value = new SimpleDateFormat("yyyy-MM-dd").format(date);
 			} else {
-				value = cell.getNumericCellValue();
+				value = NumberToTextConverter.toText(cell.getNumericCellValue());
 			}
 			break;
 		case Cell.CELL_TYPE_BOOLEAN:
@@ -142,12 +148,12 @@ public class ExcelToES implements CommandLineRunner {
 		return value;
 	}
 
-	@PreDestroy
 	public void close() {
 		client.close();
 	}
 
 	private void indexDocument(String index, String type, String id, String source) {
+		System.out.println("Debug " + source);
 		client.prepareIndex(index, type, id).setSource(source).get().getIndex();
 	}
 }
